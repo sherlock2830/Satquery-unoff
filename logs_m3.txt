@@ -1,0 +1,8 @@
+IndiaSat: 985 patches | 8962 annotations | vocab 264
+splits: train 684 val 150 test 151
+bi-temporal patches: 985
+
+=== M3 caption ===
+  1.77M params | train 684 test 151
+  ep  0  loss 2.2219
+  ep 10  loss 0.3347

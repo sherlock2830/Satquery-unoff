@@ -1,0 +1,10 @@
+IndiaSat: 985 patches | 8962 annotations | vocab 264
+splits: train 684 val 150 test 151
+bi-temporal patches: 985
+
+=== M5 change — bi-temporal (mandatory M-4) ===
+  985 bi-temporal patches | train 684 test 151
+  answer distribution (train): {'increased': 127, 'decreased': 325, 'unchanged': 232}
+  changed pixels: 41.5%
+  1.94M params
+  ep  0  loss 1.6269

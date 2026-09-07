@@ -1,0 +1,8 @@
+IndiaSat: 985 patches | 8962 annotations | vocab 264
+splits: train 684 val 150 test 151
+bi-temporal patches: 985
+
+=== M4 ground — text-guided box regression ===
+  1.64M params | train 798 test 180
+  ep  0  L1 0.2250
+  ep 10  L1 0.1669
