@@ -18,8 +18,10 @@ Start with **[docs/MASTER_PLAN.md](docs/MASTER_PLAN.md)**.
 | FastAPI service | ✅ |
 | Map AOI console (Leaflet + live Sentinel fetch) | ✅ |
 | **IndiaSat dataset** | ✅ **985 patches · 26,595 raster images · 8,962 annotations · 8 regions · 100% India** |
-| **M1–M6 trained on CPU** | ✅ **7/8 registry entries — all beat their baselines** |
-| M7 (Qwen3.5-2B-VL QLoRA) | ⬜ needs the Kaggle GPU (bitsandbytes is CUDA-only) |
+| **M1–M7 trained on CPU** | ✅ **8/8 registry entries — all beat their baselines** |
+| M7 small VLM (frozen tower + 4-layer decoder) | ✅ trained here; the 2B QLoRA variant still needs a CUDA GPU |
+| Measured land-cover statistics (NDVI / MNDWI / NDBI) | ✅ computed from the pixels, never generated |
+| Marketing site (`web/`, Next 15) | ✅ metrics read live from `models/reports/` |
 | M1 Kaggle notebook (full ViT-B/32) | ✅ written, smoke-tested on CPU |
 
 | model | metric | result | baseline |
@@ -31,6 +33,7 @@ Start with **[docs/MASTER_PLAN.md](docs/MASTER_PLAN.md)**.
 | M5a change map | IoU | **0.5090** | — |
 | M4 ground | mean IoU | **0.3082** | 0.1983 mean box |
 | M1 rsclip | R@1 (n=151) | **0.1391** | 0.0066 chance |
+| M7 vlm | caption next-token acc | see `models/reports/m7_vlm.json` | same weights, image zeroed |
 
 Full numbers, the optical–SAR cloud ablation, and the caveats that matter:
 **[docs/RESULTS.md](docs/RESULTS.md)**.
@@ -62,6 +65,8 @@ Train the CPU-trainable specialists on IndiaSat:
 
 ```bash
 python -m models.train_all          # M1, M3, M4, M5, M6 — reports in models/reports/
+python -m models.train_vlm          # M7 — frozen M1 tower, ~50 min on 4 cores
+python scripts/export_site_data.py  # push the measured metrics into web/
 ```
 
 Serve it, then open the test console:
@@ -74,10 +79,16 @@ Then visit **http://127.0.0.1:8000** — upload one or two images, ask a questio
 and see the answer, the models the agent selected, per-step latencies and
 confidences, and a downloadable Markdown report.
 
-API: `GET /` · `GET /health` · `GET /models` · `POST /upload` · `POST /query` · `GET /runs`
+API: `GET /` · `GET /health` · `GET /models` · `POST /upload` · `POST /query` ·
+`POST /aoi/fetch` · `GET /preview` · `GET /runs` ·
+`GET /runs/{run_id}/report.md`
 
-The Next.js dashboard in `../satquery/` can talk to the same API — no frontend
-rewrite needed.
+The site lives in `web/` and proxies `/api/*` to this service, so the browser
+only ever talks to one origin:
+
+```bash
+npm --prefix web run dev      # http://localhost:3001
+```
 
 ## Layout
 
@@ -88,7 +99,11 @@ docs/OBSIDIAN_GUIDE.md setup, graph view, Dataview queries, demo script
 serve/aoi.py           live Sentinel fetch for a map-drawn AOI
 agent/torch_runtime.py serving adapters for the CPU-trained specialists
 models/backbone.py     shared 14-channel CNN encoder + 5 task heads
+models/vlm.py          M7 — frozen vision tower -> visual prefix -> decoder
 models/train_all.py    trains M1/M3/M4/M5/M6 on CPU with baselines
+models/train_vlm.py    trains M7 on the IndiaSat instruction mix
+serve/analysis.py      measured land cover from NDVI / MNDWI / NDBI
+web/                   the site — Next 15, metrics read from models/reports/
 serve/static/index.html  the test console
 agent/registry.py      declarative model registry — the router's only source
 agent/router.py        hybrid rule + LLM task routing, with refusal reasons
@@ -113,6 +128,25 @@ humid subtropical and montane — **every Köppen zone absent from BigEarthNet**
 Sentinel-2 (12 band) + Sentinel-1 (VV/VH) + WorldCover labels, co-registered,
 all from keyless public sources. Annotations use the BigEarthNet.txt schema, so
 the two corpora concatenate into one training mix.
+
+## Every percentage is measured, not generated
+
+`serve/analysis.py` computes vegetation, built-up and water cover from
+Sentinel-2 surface reflectance using NDVI, MNDWI (Xu 2006) and NDBI (Zha 2003),
+over the real pixels of the scene the user asked about. Class assignment is a
+decision cascade, so the percentages sum to 100 and no pixel is counted as both
+water and built-up. Bi-temporal runs report change in both percentage points
+and relative terms — 2% → 3% built-up is +1.0 pp and +50% relative, and quoting
+only one of them is how a true number misleads.
+
+M7 narrates. It is **never** allowed to supply a figure: a 2.34 M-parameter
+decoder trained on one corpus is good enough to describe a scene and bad enough
+that a percentage it invented would be indistinguishable from one that was
+measured. If the bands an index needs are missing — a plain RGB upload has no
+NIR or SWIR — the report says "not computable" rather than producing a number.
+
+Every run writes the whole thing to `vault/runs/<run_id>.md`, downloadable at
+`GET /runs/<run_id>/report.md`.
 
 ## Two decisions worth knowing up front
 

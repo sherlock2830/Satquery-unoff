@@ -1,11 +1,11 @@
 ---
 model_id: "M6"
 name: "fusion"
-version: "0.1.0-untrained"
-runtime: "onnx"
+version: "1.0.0"
+runtime: "torch"
 n_images: 2
 trainable_on: "kaggle-p100 ~3h"
-trained: false
+trained: true
 tags: ["satquery/model"]
 ---
 
@@ -14,13 +14,31 @@ tags: ["satquery/model"]
 **Tasks.** fusion
 **Modalities.** optical, sar
 **Images required.** 2
-**Trainable params.** 48.0M
+**Trainable params.** 2.48M
 **Training data.** [[BigEarthNet-v2-co-registered-S1+S2,-BEN-19-multilabel]]
 **Compute.** kaggle-p100 ~3h
 
 ## Measured metrics
 
-_Not trained yet — no metrics. Never put a guessed number here._
+```json
+{
+  "source": "models/reports/m6_fusion.json",
+  "model": "M6",
+  "test_mAP": 0.9149570621718361,
+  "prior_baseline_mAP": 0.3423946125551708,
+  "n_classes_scored": 8,
+  "n_train": 684,
+  "n_test": 151,
+  "ablation_mAP": {
+    "fused": 0.915,
+    "s2_only": 0.7306,
+    "s1_only": 0.6869,
+    "fused_cloud50": 0.8467,
+    "s2_only_cloud50": 0.6508,
+    "s1_only_cloud50": 0.6869
+  }
+}
+```
 
 ## Notes
 

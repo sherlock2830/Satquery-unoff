@@ -109,6 +109,55 @@ def _model(spec):
     return _MODELS[spec.id]
 
 
+_M7: dict[str, Any] = {}
+
+
+def _m7():
+    """Load M7 and its own vocabulary.
+
+    M7 carries a separate vocab file because it needs one token the shared
+    IndiaSat vocabulary does not have -- <sep>, the instruction/answer
+    boundary. Appending it to the shared file would change len(vocab) and
+    break the embedding shape of every other model's checkpoint, so M7 keeps
+    its own and the base 264 indices stay identical.
+    """
+    import json
+    import torch
+    if not _M7:
+        from agent.registry import WEIGHTS_DIR, get
+        from models.vlm import M7VLM
+        with open(os.path.join(WEIGHTS_DIR, "m7_vlm_vocab.json"),
+                  encoding="utf-8") as fh:
+            meta = json.load(fh)
+        m = M7VLM(vocab=len(meta["vocab"]))
+        m.load_state_dict(torch.load(get("M7").weights_path, map_location="cpu"))
+        m.eval()
+        _M7.update({"model": m, "meta": meta,
+                    "w2i": {w: i for i, w in enumerate(meta["vocab"])}})
+    return _M7
+
+
+def _m7_answer(query: str, path: str, max_tokens: int = 48) -> tuple[str, bool]:
+    """Greedy generation from M7. Returns (text, degraded_input)."""
+    import numpy as np
+    import torch
+
+    h = _m7()
+    m, meta = h["model"], h["meta"]
+    s2, s1, degraded = stack_for(path)
+    x = torch.from_numpy(np.concatenate([s2, s1], 0))[None]
+    toks = re.findall(r"[a-z0-9]+", query.lower())[:meta["max_instr"]]
+    ids = [meta["bos"]] + [h["w2i"].get(t, 1) for t in toks] + [meta["sep"]]
+    with torch.no_grad():
+        pooled, grid = m.encode_image(x)
+        out = m.generate(pooled, grid, torch.tensor([ids]), eos=meta["eos"],
+                         max_new=max_tokens)
+    vocab = meta["vocab"]
+    txt = " ".join(vocab[i] for i in out[0].tolist()
+                   if 3 < i < meta["sep"])
+    return txt, degraded
+
+
 def _encode(text: str, maxlen: int = 32):
     import torch
     vocab = _norm()["vocab"]
@@ -121,9 +170,12 @@ def _encode(text: str, maxlen: int = 32):
 
 
 def run(spec, query: str, images: list[dict[str, Any]],
-        params: dict[str, Any]) -> dict[str, Any]:
+        params: dict[str, Any], **kw: Any) -> dict[str, Any]:
     import numpy as np
     import torch
+
+    if spec.id == "M7":
+        return _run_m7(query, images, params, **kw)
 
     if not images:
         return {"stub": True, "summary": "[no image supplied]",
@@ -210,4 +262,70 @@ def run(spec, query: str, images: list[dict[str, Any]],
                     "confidence": None, "evidence": []}
 
     return {"stub": True, "summary": f"[no torch adapter for {spec.id}]",
+            "confidence": None, "evidence": []}
+
+
+# --------------------------------------------------------------------------- #
+# M7 -- narration, and only narration
+# --------------------------------------------------------------------------- #
+def _run_m7(query: str, images: list[dict[str, Any]], params: dict[str, Any],
+            findings: list[str] | None = None,
+            measured: list[str] | None = None,
+            **_: Any) -> dict[str, Any]:
+    """Compose the final answer.
+
+    Three ingredients, kept separate on purpose:
+
+      1. M7's own sentence, generated from the image and the question. This is
+         the only generated text in the answer.
+      2. What each specialist actually returned, verbatim.
+      3. The measured statistics, copied from serve/analysis.py.
+
+    M7 never produces a number that appears in the report. A 2.34 M-parameter
+    decoder trained on one corpus is good enough to describe a scene and bad
+    enough that a percentage it invented would be indistinguishable from one
+    that was measured -- so it is not allowed to supply one.
+    """
+    parts: list[str] = []
+    generated = ""
+    if images:
+        try:
+            max_tok = int(params.get("max_tokens", 48))
+            generated, degraded = _m7_answer(query, images[0]["path"], max_tok)
+
+            # M7 is trained on IndiaSat instructions, most of which are yes/no
+            # or multiple choice, so a long compound question can pull a bare
+            # "yes" out of it. A one-word reply to a question that was not a
+            # yes/no question is not an answer -- fall back to the scene
+            # description instruction, which is in its training distribution,
+            # and say that is what the sentence is.
+            polar = bool(re.match(r"\s*(is|are|do|does|would|can|has|have)\b",
+                                  query, re.I))
+            if len(generated.split()) <= 2 and not polar:
+                described, degraded = _m7_answer(
+                    "Provide a detailed scene description for this remote "
+                    "sensing image.", images[0]["path"], max_tok)
+                # If the fallback is degenerate too, say nothing rather than
+                # label two words as a scene description. The measured table
+                # below carries the answer either way.
+                if len(described.split()) > 3:
+                    generated = described
+                    parts.append("Scene description (M7): " + described + ".")
+            elif generated:
+                parts.append(generated[0].upper() + generated[1:])
+
+            if generated and degraded:
+                parts[-1] += "  [RGB-only input: 9 of 12 bands unavailable]"
+        except Exception as exc:
+            parts.append(f"[M7 unavailable: {type(exc).__name__}: {exc}]")
+
+    if measured:
+        parts.append("Measured from the pixels: " + " ".join(measured))
+    if findings:
+        parts.append("Specialist findings: " + " · ".join(findings))
+    if not parts:
+        parts.append("[no image and no specialist output]")
+
+    return {"stub": False, "answer": "\n\n".join(parts),
+            "generated": generated, "summary": "synthesised",
             "confidence": None, "evidence": []}

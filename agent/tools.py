@@ -56,7 +56,7 @@ def run_model(spec: ModelSpec, query: str, images: list[dict[str, Any]],
             return _stub(spec)
         try:
             from agent.torch_runtime import run as run_torch
-            return run_torch(spec, query, images, params)
+            return run_torch(spec, query, images, params, **kw)
         except Exception as exc:
             return {"stub": True,
                     "summary": f"[ERROR {type(exc).__name__}: {exc}]",

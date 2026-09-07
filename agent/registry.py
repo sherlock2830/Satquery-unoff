@@ -110,7 +110,7 @@ def register(spec: ModelSpec) -> ModelSpec:
 
 
 register(ModelSpec(
-    id="M1", name="rsclip", version="0.1.0-untrained",
+    id="M1", name="rsclip", version="1.0.0",
     tasks=(Task.RETRIEVAL,),
     modalities=(Modality.OPTICAL, Modality.SAR),
     n_images=1,
@@ -157,7 +157,7 @@ register(ModelSpec(
 ))
 
 register(ModelSpec(
-    id="M3", name="caption", version="0.1.0-untrained",
+    id="M3", name="caption", version="1.0.0",
     tasks=(Task.CAPTION,),
     modalities=(Modality.OPTICAL, Modality.SAR),
     n_images=1,
@@ -172,7 +172,7 @@ register(ModelSpec(
 ))
 
 register(ModelSpec(
-    id="M4", name="ground", version="0.1.0-untrained",
+    id="M4", name="ground", version="1.0.0",
     tasks=(Task.GROUNDING,),
     modalities=(Modality.OPTICAL, Modality.SAR),
     n_images=1,
@@ -186,7 +186,7 @@ register(ModelSpec(
 ))
 
 register(ModelSpec(
-    id="M5a", name="change_map", version="0.1.0-untrained",
+    id="M5a", name="change_map", version="1.0.0",
     tasks=(Task.CHANGE_MAP,),
     modalities=(Modality.OPTICAL, Modality.SAR),
     n_images=2,
@@ -200,7 +200,7 @@ register(ModelSpec(
 ))
 
 register(ModelSpec(
-    id="M5b", name="change_vqa", version="0.1.0-untrained",
+    id="M5b", name="change_vqa", version="1.0.0",
     tasks=(Task.CHANGE_VQA,),
     modalities=(Modality.OPTICAL, Modality.SAR),
     n_images=2,
@@ -214,7 +214,7 @@ register(ModelSpec(
 ))
 
 register(ModelSpec(
-    id="M6", name="fusion", version="0.1.0-untrained",
+    id="M6", name="fusion", version="1.0.0",
     tasks=(Task.FUSION,),
     modalities=(Modality.OPTICAL, Modality.SAR),
     n_images=2,
@@ -230,22 +230,67 @@ register(ModelSpec(
 ))
 
 register(ModelSpec(
-    id="M7", name="vlm", version="0.1.0-untrained",
+    id="M7", name="vlm", version="1.0.0",
     tasks=(Task.SYNTHESIS, Task.VQA, Task.CAPTION),
     modalities=(Modality.ANY,),
     n_images=1,
-    weights="m7_vlm_Q4_K_M.gguf", runtime="llamacpp",
-    trainable_on="kaggle-p100 ~8-16h (own session)",
-    train_data="BigEarthNet.txt instruction mix (~150k) + ~10k synthetic "
-               "tool-result->answer pairs",
-    params_m=2000.0,
-    params_schema={"temperature": 0.2, "max_tokens": 256},
-    notes="Qwen3.5-2B-VL + QLoRA (r=16, a=32, NF4). fp16 NOT bf16 -- P100 is "
-          "sm_60 and T4 sm_75; bf16 needs Ampere sm_80+ and will crash. "
-          "Served via llama.cpp llama-server --mmproj (Ollama cannot load a "
-          "separate mmproj for custom fine-tunes: ollama#14730, ollama#9967). "
-          "Never sees raw imagery alone when specialists are available.",
+    weights="m7_vlm.pt", runtime="torch",
+    trainable_on="cpu ~50min (frozen tower) / kaggle-p100 ~8-16h (2B version)",
+    train_data="IndiaSat instruction mix -- 8,962 pairs over 985 patches "
+               "(captioning, binary, MCQ, referring boxes)",
+    params_m=2.34,
+    params_schema={"temperature": 0.0, "max_tokens": 48},
+    notes="Frozen M1 vision tower -> 17 visual prefix tokens -> 4-layer causal "
+          "decoder (d=256, 2.34M trainable of 3.52M). CPU-trainable, which the "
+          "2B Qwen3.5-VL+QLoRA plan is not on this hardware (bitsandbytes is "
+          "CUDA-only) -- same architecture idea at a size that fits, so the "
+          "tower swaps for the Kaggle ViT-B/32 without a redesign. "
+          "Greedy decoding: an auditable trace needs the same imagery and "
+          "question to give the same answer. It narrates; it never supplies a "
+          "number. Every percentage in a report comes from serve/analysis.py, "
+          "measured off the pixels."
 ))
+
+
+# --------------------------------------------------------------------------- #
+# measured metrics, read from the training reports
+# --------------------------------------------------------------------------- #
+# M2's numbers are literals above because they were measured by a different
+# project (vqa/) against RSVQA-LR. Everything else is trained by
+# models/train_all.py and models/train_vlm.py, which write their own reports --
+# so the reports are read here rather than transcribed. A transcribed number
+# drifts the moment a model is retrained, and a stale metric next to a fresh
+# checkpoint is worse than no metric at all.
+_REPORT_FILES = {
+    "M1": "m1_rsclip_small.json", "M3": "m3_caption.json",
+    "M4": "m4_ground.json", "M5a": "m5_change.json",
+    "M5b": "m5_change.json", "M6": "m6_fusion.json",
+    "M7": "m7_vlm.json",
+}
+
+
+def _attach_measured() -> None:
+    import json
+    d = os.path.join(ROOT, "models", "reports")
+    for mid, fname in _REPORT_FILES.items():
+        spec = REGISTRY.get(mid)
+        if spec is None or spec.metrics:
+            continue
+        path = os.path.join(d, fname)
+        if not os.path.exists(path):
+            continue                     # not trained yet -- stays empty
+        try:
+            with open(path, encoding="utf-8") as fh:
+                rep = json.load(fh)
+        except (OSError, json.JSONDecodeError):
+            continue
+        # `metrics` is a mutable field on a frozen dataclass, so mutating the
+        # dict is allowed where rebinding the attribute would not be.
+        spec.metrics.update({"source": f"models/reports/{fname}", **rep})
+        spec.metrics.pop("history", None)      # the loss curve is not a metric
+
+
+_attach_measured()
 
 
 # --------------------------------------------------------------------------- #

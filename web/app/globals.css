@@ -1,0 +1,150 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #000000;
+  --color-panel: #08080a;
+  --color-line: rgba(255, 255, 255, 0.08);
+  --color-mute: rgba(255, 255, 255, 0.46);
+  --color-dim: rgba(255, 255, 255, 0.70);
+  --color-brand: #2f7bf0;
+  --color-brand-soft: #7fb2ff;
+  --color-ice: #a4f4fd;
+  --color-verd: #34d399;
+  --color-signal: #f59e0b;
+
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+html {
+  scroll-behavior: smooth;
+  /* the fixed header is 60px; without this an anchor lands under it */
+  scroll-padding-top: 76px;
+  background: #000;
+}
+
+body {
+  background: #000;
+  color: #fff;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+::selection { background: rgba(47, 123, 240, 0.35); }
+
+:focus-visible {
+  outline: 2px solid var(--color-brand-soft);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: #000; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.13);
+  border: 2px solid #000;
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.24); }
+
+/* ------------------------------------------------------------ typography */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-mute);
+}
+
+.mono { font-family: var(--font-mono); }
+
+/* Optical centring for the big hero lines. */
+.display {
+  letter-spacing: -0.033em;
+  line-height: 1.04;
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------- the Earth limb */
+/*
+   The hero horizon is drawn, not photographed: a very large circle whose top
+   edge crosses the viewport low down, with an atmospheric rim above it. A
+   photo would cost ~1 MB and pin the page to one continent; this scales to
+   any viewport and stays crisp.
+*/
+.earth {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 300vw;
+  height: 300vw;
+  max-width: 4200px;
+  max-height: 4200px;
+  border-radius: 50%;
+  /*
+     A dark globe with a bright limb, not a blue glow: the light lives in the
+     last ~1.5% of the radius. Painting the whole disc bright washes the
+     headline out, which is the failure mode of every CSS "planet".
+  */
+  background:
+    radial-gradient(circle at 50% 50%,
+      #01030a 0%,
+      #02061a 44%,
+      #062247 47.6%,
+      #0f4b93 49.0%,
+      #4f9ae8 49.72%,
+      #cfe8ff 49.96%,
+      transparent 50%);
+  box-shadow:
+    0 0 90px 26px rgba(58, 130, 220, 0.16),
+    0 0 180px 60px rgba(30, 86, 165, 0.12);
+  pointer-events: none;
+}
+
+/* the atmospheric halo sitting just outside the limb */
+.earth::before {
+  content: "";
+  position: absolute;
+  inset: -8%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%,
+    transparent 0 45.5%,
+    rgba(90, 160, 240, 0.16) 46.3%,
+    rgba(60, 125, 210, 0.07) 46.8%,
+    transparent 47.6%);
+  -webkit-mask-image: linear-gradient(180deg, #000 0 55%, transparent 62%);
+  mask-image: linear-gradient(180deg, #000 0 55%, transparent 62%);
+}
+
+/* --------------------------------------------------------------- surface */
+.panel {
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, 0.035) 0%,
+    rgba(255, 255, 255, 0.012) 100%);
+  border: 1px solid var(--color-line);
+}
+
+.hairline { border-color: var(--color-line); }
+
+/* ------------------------------------------------------------- reveal */
+.reveal {
+  /* Reveal wrappers are grid and flex items. Those default to min-width:auto,
+     which refuses to shrink below their content -- one wide <pre> then widens
+     the whole track and gives the page a horizontal scrollbar on a phone. */
+  min-width: 0;
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.75s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+.reveal[data-shown="true"] { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .twinkle { animation: none !important; }
+}

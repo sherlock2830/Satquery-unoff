@@ -1,11 +1,11 @@
 ---
 model_id: "M5a"
 name: "change_map"
-version: "0.1.0-untrained"
-runtime: "onnx"
+version: "1.0.0"
+runtime: "torch"
 n_images: 2
 trainable_on: "kaggle-p100 ~2h (shared trunk with M5b)"
-trained: false
+trained: true
 tags: ["satquery/model"]
 ---
 
@@ -14,13 +14,29 @@ tags: ["satquery/model"]
 **Tasks.** change_map
 **Modalities.** optical, sar
 **Images required.** 2
-**Trainable params.** 31.0M
+**Trainable params.** 1.97M
 **Training data.** [[LEVIR-CD]]
 **Compute.** kaggle-p100 ~2h (shared trunk with M5b)
 
 ## Measured metrics
 
-_Not trained yet — no metrics. Never put a guessed number here._
+```json
+{
+  "source": "models/reports/m5_change.json",
+  "model": "M5",
+  "test_mask_iou": 0.4419672566231462,
+  "test_changevqa_acc": 0.7947019867549668,
+  "majority_baseline": 0.47019867549668876,
+  "n_train": 684,
+  "n_test": 151,
+  "answers": [
+    "increased",
+    "decreased",
+    "unchanged"
+  ],
+  "supervision": "dNDVI threshold 0.10 \u2014 spectral vegetation change, not semantic change labels"
+}
+```
 
 ## Notes
 

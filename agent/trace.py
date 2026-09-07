@@ -97,6 +97,7 @@ class Trace:
     confidence: float | None = None
     evidence: list[str] = field(default_factory=list)   # relative image paths
     aoi: str | None = None
+    analysis: dict[str, Any] = field(default_factory=dict)   # measured stats
     rejected: str | None = None        # populated when VALIDATE refuses
     _t0: float = field(default_factory=time.perf_counter, repr=False)
 
@@ -147,6 +148,7 @@ class Trace:
             "rejected": self.rejected,
             "evidence": self.evidence,
             "aoi": self.aoi,
+            "analysis": self.analysis,
             "total_ms": self.total_ms,
             "steps": [asdict(s) for s in self.steps],
         }
@@ -181,6 +183,10 @@ class Trace:
                     "`Input upload and compatibility checking` in PS 26167.", ""]
         else:
             out += ["## Answer", "", self.answer or "_(no answer produced)_", ""]
+
+        if self.analysis:
+            from serve.analysis import to_markdown as _analysis_md
+            out += _analysis_md(self.analysis)
 
         if self.evidence:
             out += ["## Visual evidence", ""]

@@ -1,0 +1,323 @@
+{
+  "generated_by": "scripts/export_site_data.py",
+  "models": [
+    {
+      "id": "M1",
+      "name": "rsclip",
+      "version": "0.1.0-untrained",
+      "tasks": [
+        "retrieval"
+      ],
+      "modalities": [
+        "optical",
+        "sar"
+      ],
+      "n_images": 1,
+      "runtime": "torch",
+      "params_m": 1.57,
+      "trained": true,
+      "train_data": "BigEarthNet.txt captions x reBEN patches (80k subset)",
+      "trainable_on": "kaggle-p100 ~4h",
+      "notes": "Domain-adaptation core. ViT-B/32 with patch-embed inflated 3->14 channels (12 S2 bands + VV/VH). Its frozen image tower is the backbone of M2, M3, M4 and M6 -- train first."
+    },
+    {
+      "id": "M2",
+      "name": "vqa",
+      "version": "1.0.0",
+      "tasks": [
+        "vqa"
+      ],
+      "modalities": [
+        "optical"
+      ],
+      "n_images": 1,
+      "runtime": "onnx",
+      "params_m": 2.5,
+      "trained": true,
+      "train_data": "RSVQA-LR (57,223 active train QA pairs, disjoint image splits)",
+      "trainable_on": "cpu 6.5min (v1) / kaggle-p100 ~40min (v2)",
+      "notes": "v1 shipped. KNOWN DEFECT: comp scores BELOW its own blind ablation (-0.8pt) because mean-pooled bag-of-words discards word order, so 'more roads than forests' == 'more forests than roads'. v2 replaces the question encoder with a BiGRU and the backbone with M1."
+    },
+    {
+      "id": "M3",
+      "name": "caption",
+      "version": "0.1.0-untrained",
+      "tasks": [
+        "caption"
+      ],
+      "modalities": [
+        "optical",
+        "sar"
+      ],
+      "n_images": 1,
+      "runtime": "torch",
+      "params_m": 1.89,
+      "trained": true,
+      "train_data": "BigEarthNet.txt geographically-anchored captions",
+      "trainable_on": "kaggle-p100 ~2h",
+      "notes": "Prefix-tuned: M1 embedding -> 10 soft prompt tokens -> small causal decoder. ~50ms on CPU vs ~4s for M7, and a working fallback if the VLM fails on demo day."
+    },
+    {
+      "id": "M4",
+      "name": "ground",
+      "version": "0.1.0-untrained",
+      "tasks": [
+        "grounding"
+      ],
+      "modalities": [
+        "optical",
+        "sar"
+      ],
+      "n_images": 1,
+      "runtime": "torch",
+      "params_m": 1.67,
+      "trained": true,
+      "train_data": "BigEarthNet.txt referring-expression + bbox annotations",
+      "trainable_on": "kaggle-p100 ~3h",
+      "notes": "M1 patch grid + text tower -> 2-layer cross-attention -> box head. L1 + generalised IoU loss. Answers 'highlight the water body'."
+    },
+    {
+      "id": "M5a",
+      "name": "change_map",
+      "version": "0.1.0-untrained",
+      "tasks": [
+        "change_map"
+      ],
+      "modalities": [
+        "optical",
+        "sar"
+      ],
+      "n_images": 2,
+      "runtime": "torch",
+      "params_m": 1.97,
+      "trained": true,
+      "train_data": "LEVIR-CD (637 VHR bitemporal pairs, 1024x1024)",
+      "trainable_on": "kaggle-p100 ~2h (shared trunk with M5b)",
+      "notes": "Siamese M1 -> feature differencing -> light U-Net decoder -> binary mask. Produces the spatial evidence overlay."
+    },
+    {
+      "id": "M5b",
+      "name": "change_vqa",
+      "version": "0.1.0-untrained",
+      "tasks": [
+        "change_vqa"
+      ],
+      "modalities": [
+        "optical",
+        "sar"
+      ],
+      "n_images": 2,
+      "runtime": "torch",
+      "params_m": 1.97,
+      "trained": true,
+      "train_data": "CDVQA (2,968 SECOND pairs, ~122k QA, 19 answer classes)",
+      "trainable_on": "kaggle-p100 ~1h (shared trunk with M5a)",
+      "notes": "Shares M5a's siamese trunk; mask supervision improves the VQA head and it is one model to serve instead of two."
+    },
+    {
+      "id": "M6",
+      "name": "fusion",
+      "version": "0.1.0-untrained",
+      "tasks": [
+        "fusion"
+      ],
+      "modalities": [
+        "optical",
+        "sar"
+      ],
+      "n_images": 2,
+      "runtime": "torch",
+      "params_m": 2.48,
+      "trained": true,
+      "train_data": "BigEarthNet v2 co-registered S1+S2, BEN-19 multilabel",
+      "trainable_on": "kaggle-p100 ~3h",
+      "notes": "S2 (12-band) + S1 (VV/VH) branches -> cross-attention -> BEN-19 multilabel. Init from BIFOLD resnet50-s2 / resnet101-s1. MUST normalise per-sensor from metadata -- ISRO evaluates on Cartosat-2S + RISAT, not Sentinel. Never hardcode Sentinel stats."
+    },
+    {
+      "id": "M7",
+      "name": "vlm",
+      "version": "1.0.0",
+      "tasks": [
+        "synthesis",
+        "vqa",
+        "caption"
+      ],
+      "modalities": [
+        "any"
+      ],
+      "n_images": 1,
+      "runtime": "torch",
+      "params_m": 2.34,
+      "trained": true,
+      "train_data": "IndiaSat instruction mix -- 8,962 pairs over 985 patches (captioning, binary, MCQ, referring boxes)",
+      "trainable_on": "cpu ~50min (frozen tower) / kaggle-p100 ~8-16h (2B version)",
+      "notes": "Frozen M1 vision tower -> 17 visual prefix tokens -> 4-layer causal decoder (d=256, 2.34M trainable of 3.52M). CPU-trainable, which the 2B Qwen3.5-VL+QLoRA plan is not on this hardware (bitsandbytes is CUDA-only) -- same architecture idea at a size that fits, so the tower swaps for the Kaggle ViT-B/32 without a redesign. Greedy decoding: an auditable trace needs the same imagery and question to give the same answer. It narrates; it never supplies a number. Every percentage in a report comes from serve/analysis.py, measured off the pixels."
+    }
+  ],
+  "trained_count": 8,
+  "headline": [
+    {
+      "id": "M6",
+      "name": "fusion",
+      "task": "Optical\u2013SAR land cover",
+      "metric": "mAP",
+      "value": 0.9149570621718361,
+      "baseline": 0.3423946125551708,
+      "baseline_label": "class prior",
+      "n": 151
+    },
+    {
+      "id": "M3",
+      "name": "caption",
+      "task": "Scene description",
+      "metric": "next-token accuracy",
+      "value": 0.9005385392123864,
+      "baseline": 0.07434761201378631,
+      "baseline_label": "most frequent token",
+      "n": 151
+    },
+    {
+      "id": "M5b",
+      "name": "change_vqa",
+      "task": "Bi-temporal change VQA",
+      "metric": "accuracy",
+      "value": 0.7947019867549668,
+      "baseline": 0.47019867549668876,
+      "baseline_label": "majority class",
+      "n": 151
+    },
+    {
+      "id": "M2",
+      "name": "vqa",
+      "task": "Single-image VQA",
+      "metric": "overall accuracy",
+      "value": 0.7587,
+      "baseline": 0.5749,
+      "baseline_label": "majority answer",
+      "n": 10004
+    },
+    {
+      "id": "M5a",
+      "name": "change_map",
+      "task": "Change mask",
+      "metric": "IoU",
+      "value": 0.4419672566231462,
+      "baseline": null,
+      "baseline_label": null,
+      "n": 151
+    },
+    {
+      "id": "M4",
+      "name": "ground",
+      "task": "Referring-expression grounding",
+      "metric": "mean IoU",
+      "value": 0.30823880434036255,
+      "baseline": 0.19834666209956447,
+      "baseline_label": "mean training box",
+      "n": 180
+    },
+    {
+      "id": "M1",
+      "name": "rsclip",
+      "task": "Image\u2013text retrieval",
+      "metric": "R@1",
+      "value": 0.13907285034656525,
+      "baseline": 0.006622516556291391,
+      "baseline_label": "chance",
+      "n": 151
+    },
+    {
+      "id": "M7",
+      "name": "vlm",
+      "task": "Instruction-following VLM",
+      "metric": "next-token accuracy",
+      "value": 0.5263,
+      "baseline": 0.2786,
+      "baseline_label": "same weights, image zeroed",
+      "n": 151
+    }
+  ],
+  "coverage": {
+    "M-2 single-image VQA": [
+      "M2",
+      "M7"
+    ],
+    "M-3 caption or grounding": [
+      "M3",
+      "M4",
+      "M7"
+    ],
+    "M-4 change analysis": [
+      "M5b"
+    ],
+    "M-5 optical-SAR fusion": [
+      "M6"
+    ]
+  },
+  "cloud_ablation": {
+    "fused": 0.915,
+    "s2_only": 0.7306,
+    "s1_only": 0.6869,
+    "fused_cloud50": 0.8467,
+    "s2_only_cloud50": 0.6508,
+    "s1_only_cloud50": 0.6869
+  },
+  "vlm": {
+    "architecture": "frozen M1 vision tower -> 17 visual tokens -> 4-layer causal decoder (d=256, 2.34M trainable)",
+    "epochs": 1,
+    "seconds": 211.3,
+    "test": {
+      "captioning": {
+        "n": 151,
+        "majority_baseline": 0.0409,
+        "next_token_acc": 0.5263
+      },
+      "binary": {
+        "n": 595,
+        "majority_baseline": 0.6016,
+        "exact_match": 0.6857
+      },
+      "mcq": {
+        "n": 443,
+        "majority_baseline": 0.2695,
+        "exact_match": 0.0474
+      },
+      "bounding box": {
+        "n": 180,
+        "majority_baseline": 0.0075,
+        "exact_match": 0.0
+      }
+    },
+    "blind_ablation": {
+      "captioning": {
+        "n": 151,
+        "majority_baseline": 0.0409,
+        "next_token_acc": 0.2786
+      },
+      "binary": {
+        "n": 595,
+        "majority_baseline": 0.6016,
+        "exact_match": 0.6521
+      },
+      "mcq": {
+        "n": 443,
+        "majority_baseline": 0.2695,
+        "exact_match": 0.0
+      },
+      "bounding box": {
+        "n": 180,
+        "majority_baseline": 0.0075,
+        "exact_match": 0.0
+      }
+    },
+    "caveat": "Word-level vocabulary of 265 tokens over one corpus. It answers IndiaSat-style instructions about Indian Sentinel patches; it is not a general-purpose VLM. Quantitative percentages in a report come from the measured spectral indices, never from this model."
+  },
+  "dataset": {
+    "name": "IndiaSat",
+    "patches": 985,
+    "annotations": 8962,
+    "regions": 8,
+    "bands": "Sentinel-2 (12) + Sentinel-1 (VV/VH) + ESA WorldCover",
+    "note": "BigEarthNet contains zero Indian data \u2014 its labels come from CORINE, a Europe-only product. Swapping CORINE for ESA WorldCover reproduces the recipe over India."
+  }
+}

@@ -1,0 +1,25 @@
+=== M7 vlm -- instruction-following VLM on IndiaSat ===
+D:\Study SY\SIH\satquery-core\models\vlm.py:55: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.dec = nn.TransformerEncoder(layer, layers)
+  vision tower <- M1 (0 missing, 0 unexpected)
+  cached 985 patch features in 7s (65 MB)
+  2.34M trainable of 3.52M | train 6196 test 1369 | vocab 265
+  types: {'captioning': 684, 'binary': 2703, 'mcq': 2011, 'bounding box': 798}
+  ep  0  loss 3.8616  [152s]
+  ep  1  loss 0.9640  [147s]
+  ep  2  loss 0.6018  [175s]
+  ep  3  loss 0.5318  [141s]
+  ep  4  loss 0.4936  [153s]
+  ep  5  loss 0.4597  [124s]
+  ep  6  loss 0.4294  [164s]
+  ep  7  loss 0.4063  [202s]
+  ep  8  loss 0.3816  [115s]
+  ep  9  loss 0.3675  [114s]
+  ep 10  loss 0.3483  [115s]
+  ep 11  loss 0.3251  [124s]
+  ep 12  loss 0.3061  [112s]
+  ep 13  loss 0.2898  [111s]
+  ep 14  loss 0.2751  [112s]
+  ep 15  loss 0.2601  [138s]
+  ep 16  loss 0.2516  [130s]
+  ep 17  loss 0.2452  [114s]

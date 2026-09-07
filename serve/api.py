@@ -11,6 +11,7 @@ Run:
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import tempfile
 import uuid
@@ -221,6 +222,27 @@ def query(req: QueryRequest) -> dict[str, Any]:
     d = trace.to_dict()
     d["markdown"] = trace.to_markdown()      # the downloadable report
     return d
+
+
+@app.get("/runs/{run_id}/report.md")
+def run_report(run_id: str):
+    """Download one run's Markdown report.
+
+    The report is the deliverable, not a convenience: it carries the measured
+    land-cover table, the answer, and the full execution trace in a format that
+    survives being pasted into a file note or a departmental email. It is
+    served straight off the vault note the run already wrote, so what is
+    downloaded and what the vault holds can never disagree.
+    """
+    # run ids are generated as <timestamp>-<hex4>; anything else is a path
+    # traversal attempt, not a typo.
+    if not re.fullmatch(r"\d{8}T\d{6}Z-[0-9a-f]{4}", run_id):
+        raise HTTPException(400, "malformed run id")
+    path = os.path.join(ROOT, "vault", "runs", f"{run_id}.md")
+    if not os.path.exists(path):
+        raise HTTPException(404, f"no report for run {run_id}")
+    return FileResponse(path, media_type="text/markdown",
+                        filename=f"satquery-{run_id}.md")
 
 
 @app.get("/runs")
