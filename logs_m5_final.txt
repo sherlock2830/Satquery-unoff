@@ -7,10 +7,10 @@ bi-temporal patches: 985
   answer distribution (train): {'increased': 127, 'decreased': 325, 'unchanged': 232}
   changed pixels: 41.5%
   1.94M params
-  ep  0  loss 1.6269
-  ep 10  loss 1.3386
-  ep 20  loss 1.1051
-  ep 29  loss 1.0917
-  TEST change-mask IoU 0.5090 | change-VQA acc 0.7682 (majority baseline 0.4702)
+  ep  0  loss 1.6361
+  ep 10  loss 1.2382
+  ep 20  loss 1.1746
+  ep 29  loss 1.0307
+  TEST change-mask IoU 0.4420 | change-VQA acc 0.7947 (majority baseline 0.4702)
 
-all done in 4896s — reports in models/reports/
+all done in 1168s — reports in models/reports/

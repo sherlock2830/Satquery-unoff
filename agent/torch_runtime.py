@@ -186,9 +186,22 @@ def run(spec, query: str, images: list[dict[str, Any]],
                         "confidence": None, "evidence": []}
             p = torch.softmax(la, 1)[0].numpy()
             k = int(p.argmax())
+            # M5b is supervised on dNDVI, so it measures VEGETATION change and
+            # nothing else. Asked about built-up area it still answers about
+            # vegetation, which reads as an answer to the question unless the
+            # scope is stated. Say it whenever the question is not about
+            # vegetation, so the trace cannot mislead.
+            asked_veg = bool(re.search(r"vegetat|green|crop|forest|ndvi",
+                                       query, re.I))
+            scope = ("" if asked_veg else
+                     "  [scope: this model is trained on NDVI difference and "
+                     "reports VEGETATION change only — it was not trained to "
+                     "answer about built-up area or other classes]")
             return {"stub": False, "answer": CHANGE_NAMES[k],
+                    "measures": "vegetation (dNDVI)",
                     "summary": f"vegetation {CHANGE_NAMES[k]} "
-                               f"({changed*100:.1f}% of pixels changed)" + note,
+                               f"({changed*100:.1f}% of pixels changed)"
+                               + note + scope,
                     "confidence": float(p[k]), "evidence": []}
 
         if spec.id == "M1":

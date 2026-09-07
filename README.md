@@ -16,10 +16,24 @@ Start with **[docs/MASTER_PLAN.md](docs/MASTER_PLAN.md)**.
 | Model registry, 8 entries | ✅ |
 | Execution trace → Obsidian vault | ✅ |
 | FastAPI service | ✅ |
-| **M2 single-image VQA** | ✅ **trained — 75.87% OA on held-out RSVQA-LR test** |
-| **IndiaSat dataset** | ✅ **built — 489 patches, 4,420 annotations, 8 regions, 100% India** |
-| M1 Kaggle notebook | ✅ written, training path smoke-tested on CPU |
-| M1, M3, M4, M5a, M5b, M6, M7 | ⬜ awaiting Kaggle GPU |
+| Map AOI console (Leaflet + live Sentinel fetch) | ✅ |
+| **IndiaSat dataset** | ✅ **985 patches · 26,595 raster images · 8,962 annotations · 8 regions · 100% India** |
+| **M1–M6 trained on CPU** | ✅ **7/8 registry entries — all beat their baselines** |
+| M7 (Qwen3.5-2B-VL QLoRA) | ⬜ needs the Kaggle GPU (bitsandbytes is CUDA-only) |
+| M1 Kaggle notebook (full ViT-B/32) | ✅ written, smoke-tested on CPU |
+
+| model | metric | result | baseline |
+|---|---|---:|---:|
+| M6 fusion | mAP | **0.9150** | 0.3424 prior |
+| M3 caption | next-token acc | **0.9010** | 0.0743 mode |
+| M5b change-VQA | accuracy | **0.7682** | 0.4702 majority |
+| M2 vqa | overall acc | **0.7587** | 0.5749 majority |
+| M5a change map | IoU | **0.5090** | — |
+| M4 ground | mean IoU | **0.3082** | 0.1983 mean box |
+| M1 rsclip | R@1 (n=151) | **0.1391** | 0.0066 chance |
+
+Full numbers, the optical–SAR cloud ablation, and the caveats that matter:
+**[docs/RESULTS.md](docs/RESULTS.md)**.
 
 Stubbed models return `stub: true` and are stamped `STUB` in the trace, so a
 development screenshot can never be mistaken for a measured result.
@@ -69,7 +83,10 @@ rewrite needed.
 
 ```
 docs/MASTER_PLAN.md    architecture, training recipes, hosting decision
+docs/RESULTS.md        measured metrics + baselines + honest caveats
 docs/OBSIDIAN_GUIDE.md setup, graph view, Dataview queries, demo script
+serve/aoi.py           live Sentinel fetch for a map-drawn AOI
+agent/torch_runtime.py serving adapters for the CPU-trained specialists
 models/backbone.py     shared 14-channel CNN encoder + 5 task heads
 models/train_all.py    trains M1/M3/M4/M5/M6 on CPU with baselines
 serve/static/index.html  the test console

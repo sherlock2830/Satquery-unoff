@@ -50,9 +50,26 @@ REPORTS = os.path.join(ROOT, "models", "reports")
 WC_IDS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 95, 100]
 CLS_INDEX = {c: i for i, c in enumerate(WC_IDS)}
 
-torch.manual_seed(0)
-np.random.seed(0)
 torch.set_num_threads(4)          # 4 physical cores
+SEED = 0
+
+
+def reseed(tag: str) -> None:
+    """Reset the RNGs at the start of every model.
+
+    Seeding once at import makes each model's result depend on which models ran
+    before it: in a full run M6/M1/M3/M4 consume randomness before M5 starts, so
+    `--only M5` saw a different stream and produced a different number (measured:
+    change-mask IoU 0.4304 vs 0.5090 for the same code and data). Per-model
+    seeding makes a single-model run reproduce its slice of a full run exactly.
+    """
+    # zlib.crc32, not hash(): Python randomises string hashing per process
+    # (PYTHONHASHSEED), so hash(tag) would give a different seed on every run —
+    # exactly the non-reproducibility this function exists to remove.
+    import zlib
+    h = (SEED + zlib.crc32(tag.encode())) % (2 ** 31)
+    torch.manual_seed(h)
+    np.random.seed(h)
 
 
 # --------------------------------------------------------------------------- #
@@ -155,6 +172,7 @@ def save(model, name, report):
 # M6 — optical-SAR fusion (mandatory M-5)
 # --------------------------------------------------------------------------- #
 def train_m6(C, epochs=30, bs=32):
+    reseed("M6")
     print("\n=== M6 fusion — optical+SAR multilabel land cover ===")
     tr, va, te = (C.split_ids("train"), C.split_ids("validation"), C.split_ids("test"))
     model = M6Fusion()
@@ -247,6 +265,7 @@ def train_m6(C, epochs=30, bs=32):
 # M1 — contrastive image/text
 # --------------------------------------------------------------------------- #
 def train_m1(C, epochs=40, bs=32):
+    reseed("M1")
     print("\n=== M1 rsclip — contrastive image/text ===")
     caps = {r["patch_id"]: r["output"] for r in C.rows if r["type"] == "captioning"}
     ids = [p for p in C.ids if p in caps]
@@ -318,6 +337,7 @@ def train_m1(C, epochs=40, bs=32):
 # M3 — captioning
 # --------------------------------------------------------------------------- #
 def train_m3(C, epochs=40, bs=32, maxlen=48):
+    reseed("M3")
     print("\n=== M3 caption ===")
     caps = {r["patch_id"]: r["output"] for r in C.rows if r["type"] == "captioning"}
     ids = [p for p in C.ids if p in caps]
@@ -401,6 +421,7 @@ def iou(a, b):
 
 
 def train_m4(C, epochs=40, bs=32):
+    reseed("M4")
     print("\n=== M4 ground — text-guided box regression ===")
     items = []
     for r in C.rows:
@@ -473,6 +494,7 @@ def ndvi_np(cube):
 
 
 def train_m5(C, epochs=30, bs=16, thresh=0.10):
+    reseed("M5")
     print("\n=== M5 change — bi-temporal (mandatory M-4) ===")
     ids = [p for p in C.ids if "s2_t2" in C.patches[p]]
     if len(ids) < 16:
