@@ -103,9 +103,10 @@ def main() -> None:
             "modalities": [m.value for m in s.modalities],
             "n_images": s.n_images, "runtime": s.runtime,
             "params_m": s.params_m, "trained": s.is_trained,
-            "train_data": s.train_data, "trainable_on": s.trainable_on,
-            "notes": s.notes,
         })
+        # `notes`, `train_data` and `trainable_on` stay out: the site does not
+        # render them, and they are two thirds of the file. /models serves the
+        # full spec for anyone who wants it.
 
     m6 = _report("m6_fusion.json")
     m7 = _report("m7_vlm.json")

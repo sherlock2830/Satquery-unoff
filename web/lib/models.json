@@ -15,10 +15,7 @@
       "n_images": 1,
       "runtime": "torch",
       "params_m": 1.57,
-      "trained": true,
-      "train_data": "BigEarthNet.txt captions x reBEN patches (80k subset)",
-      "trainable_on": "kaggle-p100 ~4h",
-      "notes": "Domain-adaptation core. ViT-B/32 with patch-embed inflated 3->14 channels (12 S2 bands + VV/VH). Its frozen image tower is the backbone of M2, M3, M4 and M6 -- train first."
+      "trained": true
     },
     {
       "id": "M2",
@@ -33,10 +30,7 @@
       "n_images": 1,
       "runtime": "onnx",
       "params_m": 2.5,
-      "trained": true,
-      "train_data": "RSVQA-LR (57,223 active train QA pairs, disjoint image splits)",
-      "trainable_on": "cpu 6.5min (v1) / kaggle-p100 ~40min (v2)",
-      "notes": "v1 shipped. KNOWN DEFECT: comp scores BELOW its own blind ablation (-0.8pt) because mean-pooled bag-of-words discards word order, so 'more roads than forests' == 'more forests than roads'. v2 replaces the question encoder with a BiGRU and the backbone with M1."
+      "trained": true
     },
     {
       "id": "M3",
@@ -52,10 +46,7 @@
       "n_images": 1,
       "runtime": "torch",
       "params_m": 1.89,
-      "trained": true,
-      "train_data": "BigEarthNet.txt geographically-anchored captions",
-      "trainable_on": "kaggle-p100 ~2h",
-      "notes": "Prefix-tuned: M1 embedding -> 10 soft prompt tokens -> small causal decoder. ~50ms on CPU vs ~4s for M7, and a working fallback if the VLM fails on demo day."
+      "trained": true
     },
     {
       "id": "M4",
@@ -71,10 +62,7 @@
       "n_images": 1,
       "runtime": "torch",
       "params_m": 1.67,
-      "trained": true,
-      "train_data": "BigEarthNet.txt referring-expression + bbox annotations",
-      "trainable_on": "kaggle-p100 ~3h",
-      "notes": "M1 patch grid + text tower -> 2-layer cross-attention -> box head. L1 + generalised IoU loss. Answers 'highlight the water body'."
+      "trained": true
     },
     {
       "id": "M5a",
@@ -90,10 +78,7 @@
       "n_images": 2,
       "runtime": "torch",
       "params_m": 1.97,
-      "trained": true,
-      "train_data": "LEVIR-CD (637 VHR bitemporal pairs, 1024x1024)",
-      "trainable_on": "kaggle-p100 ~2h (shared trunk with M5b)",
-      "notes": "Siamese M1 -> feature differencing -> light U-Net decoder -> binary mask. Produces the spatial evidence overlay."
+      "trained": true
     },
     {
       "id": "M5b",
@@ -109,10 +94,7 @@
       "n_images": 2,
       "runtime": "torch",
       "params_m": 1.97,
-      "trained": true,
-      "train_data": "CDVQA (2,968 SECOND pairs, ~122k QA, 19 answer classes)",
-      "trainable_on": "kaggle-p100 ~1h (shared trunk with M5a)",
-      "notes": "Shares M5a's siamese trunk; mask supervision improves the VQA head and it is one model to serve instead of two."
+      "trained": true
     },
     {
       "id": "M6",
@@ -128,10 +110,7 @@
       "n_images": 2,
       "runtime": "torch",
       "params_m": 2.48,
-      "trained": true,
-      "train_data": "BigEarthNet v2 co-registered S1+S2, BEN-19 multilabel",
-      "trainable_on": "kaggle-p100 ~3h",
-      "notes": "S2 (12-band) + S1 (VV/VH) branches -> cross-attention -> BEN-19 multilabel. Init from BIFOLD resnet50-s2 / resnet101-s1. MUST normalise per-sensor from metadata -- ISRO evaluates on Cartosat-2S + RISAT, not Sentinel. Never hardcode Sentinel stats."
+      "trained": true
     },
     {
       "id": "M7",
@@ -148,10 +127,7 @@
       "n_images": 1,
       "runtime": "torch",
       "params_m": 2.34,
-      "trained": true,
-      "train_data": "IndiaSat instruction mix -- 8,962 pairs over 985 patches (captioning, binary, MCQ, referring boxes)",
-      "trainable_on": "cpu ~50min (frozen tower) / kaggle-p100 ~8-16h (2B version)",
-      "notes": "Frozen M1 vision tower -> 17 visual prefix tokens -> 4-layer causal decoder (d=256, 2.34M trainable of 3.52M). CPU-trainable, which the 2B Qwen3.5-VL+QLoRA plan is not on this hardware (bitsandbytes is CUDA-only) -- same architecture idea at a size that fits, so the tower swaps for the Kaggle ViT-B/32 without a redesign. Greedy decoding: an auditable trace needs the same imagery and question to give the same answer. It narrates; it never supplies a number. Every percentage in a report comes from serve/analysis.py, measured off the pixels."
+      "trained": true
     }
   ],
   "trained_count": 8,
