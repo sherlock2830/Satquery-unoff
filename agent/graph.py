@@ -183,14 +183,15 @@ def synthesise(state: State) -> dict[str, Any]:
     with trace.timed("M7", model_id="M7", model_name=spec.name,
                      model_version=spec.version,
                      params=dict(spec.params_schema)) as step:
-        from serve.analysis import headline
+        from serve.analysis import dominant_class, headline
         findings = [f"{mid} ({get(mid).name}): {r.get('summary', '')}"
                     for mid, r in results.items()]
         measured = [f"{h['label'].lower()} {h['value']} ({h['note']})."
                     for h in headline(trace.analysis)]
         res = run_model(spec, state["query"], state.get("images", []),
                         dict(spec.params_schema), findings=findings,
-                        measured=measured)
+                        measured=measured,
+                        dominant=dominant_class(trace.analysis))
         step.outcome = "synthesised"
         if res.get("stub"):
             step.params["STUB"] = "no trained weights"

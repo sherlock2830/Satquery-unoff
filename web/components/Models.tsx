@@ -96,7 +96,13 @@ export function Models() {
           whose patches are separated from train by a deterministic grid hash so
           neighbouring — and therefore overlapping — patches never straddle the
           split. M7&apos;s baseline is the same weights with the visual tokens zeroed:
-          the difference is the part of the answer that comes from the image.
+          the difference is the part of the answer that comes from the image, and
+          on multiple choice it is 40 points. It also reaches 0.941 on yes/no and
+          0.926 next-token on captions — and <strong className="font-medium text-[var(--color-dim)]">0.000
+          on referring boxes</strong>, because it emits four coordinates as words and
+          an exact string match on those is close to unwinnable. Grounding is M4&apos;s
+          job, scored properly above; the box questions stay in M7&apos;s training mix
+          because they teach spatial language, not because M7 is the grounding model.
         </p>
       </Reveal>
 

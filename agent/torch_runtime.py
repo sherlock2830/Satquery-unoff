@@ -268,9 +268,43 @@ def run(spec, query: str, images: list[dict[str, Any]],
 # --------------------------------------------------------------------------- #
 # M7 -- narration, and only narration
 # --------------------------------------------------------------------------- #
+# Words that only ever appear inside a "<class> covers approximately N ..."
+# clause in an IndiaSat caption. Stripping backwards through them is what
+# leaves a clean sentence after the generated figure is removed.
+_FIGURE_FILLER = {
+    "covers", "cover", "covering", "approximately", "about", "around",
+    "of", "the", "scene", "image", "alongside", "and", "with", "plus",
+    "built", "up", "tree", "shrubland", "grassland", "cropland", "bare",
+    "sparse", "vegetation", "permanent", "water", "bodies", "herbaceous",
+    "wetland", "mangroves", "moss", "lichen", "snow", "ice",
+}
+
+
+def _strip_figures(text: str) -> str:
+    """Remove every generated number from an M7 caption.
+
+    IndiaSat captions are written as "<class> covers approximately N% of the
+    scene", so M7 learned to emit percentages -- and it emits them from a
+    120x120 thumbnail of a patch, not from the AOI the user actually asked
+    about. Left in, they sit in the same paragraph as the measured figures and
+    disagree with them, and a reader has no way to tell which is which.
+
+    Truncating at the first digit and walking back through the clause that
+    introduced it leaves the qualitative description, which is what M7 is
+    actually for.
+    """
+    toks = text.split()
+    cut = next((i for i, t in enumerate(toks) if any(c.isdigit() for c in t)),
+               len(toks))
+    while cut > 0 and toks[cut - 1] in _FIGURE_FILLER:
+        cut -= 1
+    return " ".join(toks[:cut]).strip()
+
+
 def _run_m7(query: str, images: list[dict[str, Any]], params: dict[str, Any],
             findings: list[str] | None = None,
             measured: list[str] | None = None,
+            dominant: str | None = None,
             **_: Any) -> dict[str, Any]:
     """Compose the final answer.
 
@@ -310,12 +344,34 @@ def _run_m7(query: str, images: list[dict[str, Any]], params: dict[str, Any],
                 # below carries the answer either way.
                 if len(described.split()) > 3:
                     generated = described
-                    parts.append("Scene description (M7): " + described + ".")
-            elif generated:
-                parts.append(generated[0].upper() + generated[1:])
 
-            if generated and degraded:
+            text = _strip_figures(generated)
+            if text and len(text.split()) > 3:
+                # Labelled as generated, every time. The place name and the
+                # dominant class are M7's predictions from a 120x120 patch --
+                # plausible, frequently right, and not evidence.
+                parts.append("Scene description (M7, generated — the location "
+                             "and land-cover class are model predictions, not "
+                             "measurements): " + text + ".")
+            elif text:
+                parts.append(text[0].upper() + text[1:])
+
+            if parts and degraded:
                 parts[-1] += "  [RGB-only input: 9 of 12 bands unavailable]"
+
+            # VERIFY, in the sense PS 26167 asks for: where the generated
+            # description and the measured pixels disagree about what the
+            # scene mostly is, say so rather than printing both and leaving
+            # the reader to notice.
+            if dominant and text:
+                claimed = re.search(
+                    r"predominantly ([a-z ]+?) landscape", text)
+                if claimed and dominant not in claimed.group(1).strip():
+                    parts.append(
+                        f"⚠ Disagreement: M7 describes the scene as "
+                        f"predominantly {claimed.group(1).strip()}, while the "
+                        f"measured indices make {dominant} the largest class. "
+                        f"The measured value is the one to act on.")
         except Exception as exc:
             parts.append(f"[M7 unavailable: {type(exc).__name__}: {exc}]")
 

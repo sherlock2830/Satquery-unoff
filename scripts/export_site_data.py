@@ -78,14 +78,18 @@ def headline_metrics() -> list[dict]:
          "n": m1.get("gallery")},
     ]
 
-    cap = ((m7.get("test") or {}).get("captioning") or {})
-    blind = ((m7.get("blind_ablation") or {}).get("captioning") or {})
+    # Multiple choice, not captioning, is M7's headline: the blind ablation
+    # moves 40 points there against 8 on captioning, because a language prior
+    # can carry a caption a long way and cannot guess which of four land-cover
+    # classes dominates a scene it has not seen.
+    mcq = ((m7.get("test") or {}).get("mcq") or {})
+    blind = ((m7.get("blind_ablation") or {}).get("mcq") or {})
     rows.append({
         "id": "M7", "name": "vlm", "task": "Instruction-following VLM",
-        "metric": "next-token accuracy", "value": cap.get("next_token_acc"),
-        "baseline": blind.get("next_token_acc"),
+        "metric": "MCQ exact match", "value": mcq.get("exact_match"),
+        "baseline": blind.get("exact_match"),
         "baseline_label": "same weights, image zeroed",
-        "n": cap.get("n"),
+        "n": mcq.get("n"),
     })
     return rows
 

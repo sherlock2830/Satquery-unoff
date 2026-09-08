@@ -4,7 +4,7 @@
     {
       "id": "M1",
       "name": "rsclip",
-      "version": "0.1.0-untrained",
+      "version": "1.0.0",
       "tasks": [
         "retrieval"
       ],
@@ -41,7 +41,7 @@
     {
       "id": "M3",
       "name": "caption",
-      "version": "0.1.0-untrained",
+      "version": "1.0.0",
       "tasks": [
         "caption"
       ],
@@ -60,7 +60,7 @@
     {
       "id": "M4",
       "name": "ground",
-      "version": "0.1.0-untrained",
+      "version": "1.0.0",
       "tasks": [
         "grounding"
       ],
@@ -79,7 +79,7 @@
     {
       "id": "M5a",
       "name": "change_map",
-      "version": "0.1.0-untrained",
+      "version": "1.0.0",
       "tasks": [
         "change_map"
       ],
@@ -98,7 +98,7 @@
     {
       "id": "M5b",
       "name": "change_vqa",
-      "version": "0.1.0-untrained",
+      "version": "1.0.0",
       "tasks": [
         "change_vqa"
       ],
@@ -117,7 +117,7 @@
     {
       "id": "M6",
       "name": "fusion",
-      "version": "0.1.0-untrained",
+      "version": "1.0.0",
       "tasks": [
         "fusion"
       ],
@@ -230,11 +230,11 @@
       "id": "M7",
       "name": "vlm",
       "task": "Instruction-following VLM",
-      "metric": "next-token accuracy",
-      "value": 0.5263,
-      "baseline": 0.2786,
+      "metric": "MCQ exact match",
+      "value": 0.9074,
+      "baseline": 0.5079,
       "baseline_label": "same weights, image zeroed",
-      "n": 151
+      "n": 443
     }
   ],
   "coverage": {
@@ -264,23 +264,23 @@
   },
   "vlm": {
     "architecture": "frozen M1 vision tower -> 17 visual tokens -> 4-layer causal decoder (d=256, 2.34M trainable)",
-    "epochs": 1,
-    "seconds": 211.3,
+    "epochs": 20,
+    "seconds": 2850.2,
     "test": {
       "captioning": {
         "n": 151,
         "majority_baseline": 0.0409,
-        "next_token_acc": 0.5263
+        "next_token_acc": 0.9255
       },
       "binary": {
         "n": 595,
         "majority_baseline": 0.6016,
-        "exact_match": 0.6857
+        "exact_match": 0.9412
       },
       "mcq": {
         "n": 443,
         "majority_baseline": 0.2695,
-        "exact_match": 0.0474
+        "exact_match": 0.9074
       },
       "bounding box": {
         "n": 180,
@@ -292,17 +292,17 @@
       "captioning": {
         "n": 151,
         "majority_baseline": 0.0409,
-        "next_token_acc": 0.2786
+        "next_token_acc": 0.8464
       },
       "binary": {
         "n": 595,
         "majority_baseline": 0.6016,
-        "exact_match": 0.6521
+        "exact_match": 0.8387
       },
       "mcq": {
         "n": 443,
         "majority_baseline": 0.2695,
-        "exact_match": 0.0
+        "exact_match": 0.5079
       },
       "bounding box": {
         "n": 180,

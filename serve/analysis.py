@@ -311,6 +311,21 @@ def to_markdown(a: dict[str, Any]) -> list[str]:
     return out
 
 
+def dominant_class(a: dict[str, Any]) -> str | None:
+    """The largest measured class, for cross-checking a generated description.
+
+    Taken from the later acquisition in a bi-temporal run, because that is the
+    image a scene description is generated from.
+    """
+    if not a.get("available"):
+        return None
+    scene = a.get("scene") or a.get("t2")
+    cover = (scene or {}).get("cover")
+    if not cover:
+        return None
+    return max(cover.items(), key=lambda kv: kv[1]["pct"])[0]
+
+
 def headline(a: dict[str, Any]) -> list[dict[str, Any]]:
     """The three numbers the console shows as tiles. Empty when not measurable."""
     if not a.get("available"):
